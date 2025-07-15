@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Futrono Hills RPG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      user-select: none;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #game {
+      width: 320px;
+      height: 320px;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      gap: 1px;
+      border: 4px solid #4caf50;
+      background: #222;
+      touch-action: none;
+    }
+
+    .tile {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Elementos visuales */
+    .tree {
+      background: #185c1f;
+      box-shadow: inset 0 0 8px #0f300a;
+    }
+
+    .water {
+      background: #2ca0ff;
+      box-shadow: inset 0 0 8px #1a65b3;
+    }
+
+    .wall {
+      background: #444;
+      box-shadow: inset 0 0 5px #222;
+    }
+
+    .door {
+      background: #ff7f00;
+      border: 2px solid #ffa500;
+      box-shadow: 0 0 6px #ffb84d;
+      cursor: default;
+    }
+
+    .princess {
+      background: #ff99cc;
+      box-shadow: 0 0 10px #ff3399;
+      cursor: default;
+    }
+
+    /* Fondo niveles */
+    .level-outside .tile:not(.tree):not(.water):not(.door) {
+      background: #4caf50;
+    }
+    .level-castle .tile:not(.wall):not(.door) {
+      background: #bbb;
+    }
+    .level-dungeon .tile:not(.wall):not(.door):not(.princess) {
+      background: #111;
+    }
+    .level-final .tile:not(.mountain):not(.door):not(.textTile) {
+      background: #7a7a7a; /* gris medio para cielo */
+    }
+    .mountain {
+      background: linear-gradient(to top, #a0a0a0 0%, #d0d0d0 70%, #f0f4f8 100%);
+      border-radius: 0 0 40% 40%;
+      box-shadow: 0 4px 6px #888 inset;
+    }
+    .textTile {
+      background: transparent !important;
+    }
+
+    /* Jugador */
+    #player {
+      background: #ff0;
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      transition: top 0.1s, left 0.1s;
+      z-index: 10;
+      border: 2px solid #aaa;
+      box-sizing: border-box;
+      border-radius: 4px;
+    }
+
+    #label {
+      position: absolute;
+      top: -30px;
+      width: 100%;
+      text-align: center;
+      font-weight: bold;
+      color: #4caf50;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    #message {
+      position: absolute;
+      bottom: -40px;
+      width: 100%;
+      text-align: center;
+      font-size: 18px;
+      color: #0f0;
+      user-select: none;
+      pointer-events: none;
+      min-height: 24px;
+    }
+
+    /* Pantalla final */
+    #endScreen {
+      position: absolute;
+      inset: 0;
+      background: #000e;
+      color: #4caf50;
+      font-size: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      z-index: 100;
+      display: none;
+      user-select: none;
+      font-weight: bold;
+      flex-direction: column;
+    }
+
+    #endScreen button {
+      margin-top: 20px;
+      font-size: 16px;
+      padding: 10px 20px;
+      border: none;
+      background: #4caf50;
+      color: #111;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    #endScreen button:hover {
+      background: #3a9a3a;
+    }
+
+    /* Botones moviles */
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      display: flex;
+      justify-content: space-between;
+      user-select: none;
+      z-index: 150;
+    }
+    .btn {
+      background: #4caf50cc;
+      border: 2px solid #3a9a3a;
+      color: #111;
+      font-weight: bold;
+      font-size: 24px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.3s;
+      touch-action: manipulation;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .btn:active {
+      background: #3a9a3a;
+      color: #fff;
+    }
+    #controls .middle {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="label">Futrono Hills</div>
+    <div id="message"></div>
+    <div id="player"></div>
+  </div>
+
+  <div id="endScreen">
+    ¡Juego terminado!<br />
+    Hecho por Estudios Monteranco
+    <button id="restartBtn">Reiniciar</button>
+  </div>
+
+  <div id="controls" aria-label="Controles del juego">
+    <button class="btn" id="leftBtn" aria-label="Mover a la izquierda">◀</button>
+    <div class="middle">
+      <button class="btn" id="upBtn" aria-label="Mover arriba">▲</button>
+      <button class="btn" id="downBtn" aria-label="Mover abajo">▼</button>
+    </div>
+    <button class="btn" id="rightBtn" aria-label="Mover a la derecha">▶</button>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const player = document.getElementById("player");
+    const label = document.getElementById("label");
+    const message = document.getElementById("message");
+    const endScreen = document.getElementById("endScreen");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const tileSize = 32;
+    const cols = 10;
+    const rows = 10;
+    let posX = 5;
+    let posY = 9;
+    let currentMap = "outside";
+    let gameEnded = false;
+
+    function playMoveSound() {
+      try {
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(440, context.currentTime);
+        gain.gain.setValueAtTime(0.05, context.currentTime);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.1);
+      } catch (e) {}
+    }
+
+    function playVictorySound() {
+      try {
+        const context = new AudioContext();
+        const osc = context.createOscillator();
+        const gain = context.createGain();
+
+        osc.type = 'square';
+        osc.connect(gain);
+        gain.connect(context.destination);
+
+        let time = context.currentTime;
+        const notes = [440, 550, 660, 880];
+        const duration = 0.15;
+
+        notes.forEach((freq, i) => {
+          osc.frequency.setValueAtTime(freq, time + i * duration);
+          gain.gain.setValueAtTime(0.1, time + i * duration);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + (i + 1) * duration);
+        });
+
+        osc.start(time);
+        osc.stop(time + notes.length * duration + 0.1);
+      } catch (e) {}
+    }
+
+    const maps = {
+      outside: {
+        label: "🌿 Futrono Hills",
+        cssClass: "level-outside",
+        trees: [
+          [1, 1], [2, 1], [1, 2], [7, 2], [8, 2], [0, 7], [1, 7], [2, 7],
+        ],
+        water: [
+          [4, 4], [5, 4], [4, 5], [5, 5],
+        ],
+        walls: [],
+        doors: [
+          { x: 5, y: 0, to: { map: "castle", x: 5, y: 9 } }
+        ],
+        princess: []
+      },
+      castle: {
+        label: "🏰 Entrada al Castillo",
+        cssClass: "level-castle",
+        trees: [],
+        water: [],
+        walls: [
+          [3, 5], [4, 5], [6, 5], [7, 5],
+          [0, 0], [1, 0], [8, 0], [9, 0],
+          [0, 1], [9, 1],
+        ],
+        doors: [
+          { x: 5, y: 9, to: { map: "outside", x: 5, y: 0 } },
+          { x: 5, y: 0, to: { map: "dungeon", x: 5, y: 9 } }
+        ],
+        princess: []
+      },
+      dungeon: {
+        label: "🕳️ Mazmorra",
+        cssClass: "level-dungeon",
+        trees: [],
+        water: [],
+        walls: [
+          [4, 2], [5, 2], [6, 2],
+          [0, 0], [1, 0], [8, 0], [9, 0],
+          [0, 1], [9, 1],
+        ],
+        doors: [
+          { x: 5, y: 9, to: { map: "castle", x: 5, y: 0 } }
+        ],
+        princess: [[5, 1]]
+      },
+      final: {
+        label: "🏔️ Montaña Nevada",
+        cssClass: "level-final",
+        trees: [],
+        water: [],
+        walls: [],
+        doors: [],
+        princess: [],
+        mountains: [
+          [4,6], [5,6], [3,7], [6,7], [2,8], [7,8], [1,9], [8,9]
+        ],
+        textPos: [2, 4]
+      }
+    };
+
+    function loadMap(name, x, y) {
+      if (gameEnded && name !== "final") return;
+      game.className = "";
+      game.classList.add(maps[name].cssClass);
+      game.querySelectorAll(".tile").forEach(t => t.remove());
+      label.textContent = maps[name].label;
+      message.textContent = "";
+      currentMap = name;
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const tile = document.createElement("div");
+          tile.className = "tile";
+
+          if (maps[name].trees?.some(t => t[0] === x && t[1] === y)) {
+            tile.classList.add("tree");
+            tile.setAttribute("data-wall", "true");
+          }
+
+          if (maps[name].water?.some(w => w[0] === x && w[1] === y)) {
+            tile.classList.add("water");
+            tile.setAttribute("data-wall", "true");
+          }
+
+          if (maps[name].walls?.some(w => w[0] === x && w[1] === y)) {
+            tile.classList.add("wall");
+            tile.setAttribute("data-wall", "true");
+          }
+
+          if (maps[name].princess?.some(p => p[0] === x && p[1] === y)) {
+            tile.classList.add("princess");
+            tile.setAttribute("data-princess", "true");
+          }
+
+          if (maps[name].doors?.some(d => d.x === x && d.y === y)) {
+            tile.classList.add("door");
+            tile.setAttribute("data-door", "true");
+          }
+
+          if (name === "final" && maps.final.mountains.some(m => m[0] === x && m[1] === y)) {
+            tile.classList.add("mountain");
+          }
+
+          if (name === "final" && x === maps.final.textPos[0] && y === maps.final.textPos[1]) {
+            tile.classList.add("textTile");
+            tile.textContent = "Hecho por\nEstudios\nMonteranco";
+            tile.style.whiteSpace = "pre-line";
+            tile.style.color = "#4caf50";
+            tile.style.fontWeight = "bold";
+            tile.style.fontSize = "14px";
+            tile.style.textAlign = "center";
+            tile.style.userSelect = "none";
+            tile.style.lineHeight = "1.2";
+          }
+
+          tile.setAttribute("data-x", x);
+          tile.setAttribute("data-y", y);
+          game.appendChild(tile);
+        }
+      }
+
+      posX = x;
+      posY = y;
+      updatePosition();
+    }
+
+    function updatePosition() {
+      player.style.left = posX * tileSize + "px";
+      player.style.top = posY * tileSize + "px";
+    }
+
+    function canMove(x, y) {
+      if (x < 0 || y < 0 || x >= cols || y >= rows) return false;
+      const tile = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+      return tile && !tile.hasAttribute("data-wall");
+    }
+
+    function movePlayer(x, y) {
+      if (gameEnded) return;
+      if (canMove(x, y)) {
+        posX = x;
+        posY = y;
+        updatePosition();
+        checkEvents();
+        playMoveSound();
+      }
+    }
+
+    function checkEvents() {
+      const tile = document.querySelector(`[data-x="${posX}"][data-y="${posY}"]`);
+      if (!tile) return;
+
+      // Auto pasar puertas
+      const door = maps[currentMap].doors.find(d => d.x === posX && d.y === posY);
+      if (door) {
+        loadMap(door.to.map, door.to.x, door.to.y);
+        return;
+      }
+
+      if (tile.hasAttribute("data-princess")) {
+        message.textContent = "¡Has encontrado a la princesa! 👸";
+        playVictorySound();
+        setTimeout(() => loadMap("final", 5, 9), 1500);
+      }
+    }
+
+    restartBtn.addEventListener("click", () => {
+      gameEnded = false;
+      endScreen.style.display = "none";
+      loadMap("outside", 5, 9);
+      message.textContent = "";
+    });
+
+    // Botones móvil
+    document.getElementById("leftBtn").addEventListener("touchstart", e => {
+      e.preventDefault();
+      movePlayer(posX - 1, posY);
+    });
+    document.getElementById("rightBtn").addEventListener("touchstart", e => {
+      e.preventDefault();
+      movePlayer(posX + 1, posY);
+    });
+    document.getElementById("upBtn").addEventListener("touchstart", e => {
+      e.preventDefault();
+      movePlayer(posX, posY - 1);
+    });
+    document.getElementById("downBtn").addEventListener("touchstart", e => {
+      e.preventDefault();
+      movePlayer(posX, posY + 1);
+    });
+
+    // Soporte teclado
+    document.addEventListener("keydown", e => {
+      if (gameEnded) return;
+      switch (e.key) {
+        case "ArrowUp": movePlayer(posX, posY - 1); break;
+        case "ArrowDown": movePlayer(posX, posY + 1); break;
+        case "ArrowLeft": movePlayer(posX - 1, posY); break;
+        case "ArrowRight": movePlayer(posX + 1, posY); break;
+      }
+    });
+
+    loadMap("outside", 5, 9);
+  </script>
+</body>
+</html>
+
